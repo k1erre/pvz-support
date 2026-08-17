@@ -3,10 +3,15 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- ===== Защита от кэширования ===== -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <meta name="robots" content="noindex, nofollow" />
+    
+    <!-- ===== Запрет индексации поисковиками ===== -->
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    
     <title>📦 Полезное для поддержки ПВЗ</title>
     <style>
         /* ===== Светлая тема (по умолчанию) ===== */
@@ -560,6 +565,23 @@
 
     <script>
         // ================================================================
+        //  СТРАХОВКА ОТ КЭШИРОВАНИЯ — АВТОМАТИЧЕСКИЙ ПАРАМЕТР В URL
+        // ================================================================
+
+        (function() {
+            // Если в URL нет параметра — добавляем уникальный
+            if (!window.location.search) {
+                try {
+                    const url = new URL(window.location);
+                    url.searchParams.set('v', Date.now());
+                    window.history.replaceState({}, '', url);
+                } catch (e) {
+                    // Если что-то пошло не так — просто игнорируем
+                }
+            }
+        })();
+
+        // ================================================================
         //  ПЕРЕКЛЮЧЕНИЕ ТЕМЫ
         // ================================================================
 
@@ -759,7 +781,6 @@
         const tempOutput = document.getElementById('tempOutput');
         const tempStatus = document.getElementById('tempStatus');
 
-        // Функция обновления списка фраз при смене категории
         function populateTempPhrases() {
             const category = tempCategory.value;
             let filtered = TEMP_PHRASES;
@@ -774,16 +795,13 @@
                 option.textContent = `[${getCategoryLabel(p.category)}] ${label}`;
                 tempPhraseSelect.appendChild(option);
             });
-            
-            // Очищаем вывод при смене категории
+
             tempOutput.value = '';
             tempOutput.disabled = true;
         }
 
-        // Событие смены категории
         tempCategory.addEventListener('change', populateTempPhrases);
-        
-        // Событие выбора фразы — сразу показываем в поле вывода
+
         tempPhraseSelect.addEventListener('change', function() {
             const index = parseInt(this.value);
             if (isNaN(index) || index < 0 || index >= TEMP_PHRASES.length) {
@@ -791,53 +809,49 @@
                 tempOutput.disabled = true;
                 return;
             }
-            
+
             const phrase = TEMP_PHRASES[index];
             let text = phrase.text;
             if (tempAddGreeting.checked) {
                 text = 'Здравствуйте!\n\n' + text;
             }
-            
+
             tempOutput.value = text;
             tempOutput.disabled = false;
             showStatus(tempStatus, '', '');
         });
 
-        // Событие чекбокса — обновляем текст, если фраза уже выбрана
         tempAddGreeting.addEventListener('change', function() {
             const index = parseInt(tempPhraseSelect.value);
             if (isNaN(index) || index < 0 || index >= TEMP_PHRASES.length) {
                 return;
             }
-            
+
             const phrase = TEMP_PHRASES[index];
             let text = phrase.text;
             if (this.checked) {
                 text = 'Здравствуйте!\n\n' + text;
             }
-            
+
             tempOutput.value = text;
         });
 
-        // Кнопка копирования
         tempCopyBtn.addEventListener('click', async () => {
             const text = tempOutput.value;
             if (!text) {
                 showStatus(tempStatus, 'Сначала выберите фразу', 'error');
                 return;
             }
-            
+
             try {
                 await navigator.clipboard.writeText(text);
                 showStatus(tempStatus, 'Скопировано! ✅', 'success');
             } catch (err) {
-                // Fallback
                 const ok = copyText(text);
                 showStatus(tempStatus, ok ? 'Скопировано! ✅' : 'Ошибка копирования ❌', ok ? 'success' : 'error');
             }
         });
 
-        // Инициализация: блокируем вывод
         tempOutput.disabled = true;
         populateTempPhrases();
 
