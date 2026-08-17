@@ -296,15 +296,17 @@
             min-width: 80px;
         }
 
-        /* ===== Центрирование кнопки ===== */
+        /* ===== Центрирование кнопок ===== */
         .btn-center {
             display: flex;
             justify-content: center;
+            gap: 10px;
             margin: 10px 0 14px;
+            flex-wrap: wrap;
         }
         .btn-center .btn {
             width: auto;
-            min-width: 200px;
+            min-width: 160px;
         }
 
         /* ===== Блок вывода ===== */
@@ -478,7 +480,7 @@
                 padding: 14px;
             }
             .btn-center .btn {
-                min-width: 150px;
+                min-width: 120px;
                 width: 100%;
             }
             .theme-toggle {
@@ -504,20 +506,31 @@
 
         <!-- ===== Вкладки ===== -->
         <div class="tabs" id="tabs">
-            <button class="tab-btn active" data-tab="main">✏️ Генератор фраз</button>
+            <button class="tab-btn active" data-tab="main">✏️ Закрывающие фразы</button>
             <button class="tab-btn" data-tab="temp">⏳ Временные ответы</button>
         </div>
 
         <!-- ============================================================ -->
-        <!-- ВКЛАДКА 1: ГЕНЕРАТОР ФРАЗ -->
+        <!-- ВКЛАДКА 1: ЗАКРЫВАЮЩИЕ ФРАЗЫ -->
         <!-- ============================================================ -->
         <div class="tab-content active" id="tab-main">
-            <div id="phraseBox" class="phrase-box">
-                Нажмите «Сгенерировать и скопировать», чтобы получить и скопировать фразу
+            <!-- Выпадающий список со всеми фразами -->
+            <div class="field-group">
+                <label for="phraseSelect">Выбрать фразу из списка</label>
+                <select id="phraseSelect">
+                    <option value="">— Выберите фразу —</option>
+                </select>
             </div>
 
+            <!-- Блок с отображением выбранной/случайной фразы -->
+            <div id="phraseBox" class="phrase-box">
+                Нажмите «🎲 Случайная фраза» или выберите из списка
+            </div>
+
+            <!-- Две кнопки: Случайная фраза и Копировать -->
             <div class="btn-center">
-                <button id="generateBtn" class="btn btn-primary">Сгенерировать и скопировать</button>
+                <button id="randomPhraseBtn" class="btn btn-primary">🎲 Случайная фраза</button>
+                <button id="copyPhraseBtn" class="btn btn-success">📋 Скопировать</button>
             </div>
 
             <div id="status" class="status"></div>
@@ -569,15 +582,12 @@
         // ================================================================
 
         (function() {
-            // Если в URL нет параметра — добавляем уникальный
             if (!window.location.search) {
                 try {
                     const url = new URL(window.location);
                     url.searchParams.set('v', Date.now());
                     window.history.replaceState({}, '', url);
-                } catch (e) {
-                    // Если что-то пошло не так — просто игнорируем
-                }
+                } catch (e) {}
             }
         })();
 
@@ -622,7 +632,7 @@
         //  ДАННЫЕ
         // ================================================================
 
-        // ---- Основные фразы ----
+        // ---- Закрывающие фразы ----
         const MAIN_PHRASES = [
             'Желаем хорошего дня! 😊',
             'Спасибо за обращение — будем рады помочь снова! 😊',
@@ -714,16 +724,44 @@
         });
 
         // ================================================================
-        //  ВКЛАДКА 1: ГЕНЕРАТОР ФРАЗ
+        //  ВКЛАДКА 1: ЗАКРЫВАЮЩИЕ ФРАЗЫ
         // ================================================================
 
+        const phraseSelect = document.getElementById('phraseSelect');
         const phraseBox = document.getElementById('phraseBox');
-        const generateBtn = document.getElementById('generateBtn');
+        const randomPhraseBtn = document.getElementById('randomPhraseBtn');
+        const copyPhraseBtn = document.getElementById('copyPhraseBtn');
         const statusEl = document.getElementById('status');
 
         let currentPhrase = '';
         let previousPhrase = '';
 
+        // Заполняем выпадающий список
+        function populatePhraseSelect() {
+            phraseSelect.innerHTML = '<option value="">— Выберите фразу —</option>';
+            MAIN_PHRASES.forEach((phrase, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                const label = phrase.length > 60 ? phrase.slice(0, 57) + '…' : phrase;
+                option.textContent = label;
+                phraseSelect.appendChild(option);
+            });
+        }
+        populatePhraseSelect();
+
+        // Функция обновления блока с фразой
+        function setPhrase(text, isCopied = false) {
+            currentPhrase = text;
+            phraseBox.textContent = text;
+            phraseBox.classList.add('has-text');
+            if (isCopied) {
+                phraseBox.classList.add('copied');
+            } else {
+                phraseBox.classList.remove('copied');
+            }
+        }
+
+        // Функция получения случайной фразы (без повторов)
         function getRandomPhrase() {
             if (MAIN_PHRASES.length === 1) return MAIN_PHRASES[0];
             if (previousPhrase === '') {
@@ -747,17 +785,29 @@
             return newPhrase;
         }
 
-        generateBtn.addEventListener('click', async () => {
-            const newPhrase = getRandomPhrase();
-            currentPhrase = newPhrase;
-            previousPhrase = newPhrase;
+        // Обработчик: выбор фразы из списка
+        phraseSelect.addEventListener('change', function() {
+            const index = parseInt(this.value);
+            if (isNaN(index) || index < 0 || index >= MAIN_PHRASES.length) {
+                setPhrase('Нажмите «🎲 Случайная фраза» или выберите из списка', false);
+                phraseBox.classList.remove('has-text');
+                showStatus(statusEl, '', '');
+                return;
+            }
+            const phrase = MAIN_PHRASES[index];
+            setPhrase(phrase, false);
+            previousPhrase = phrase;
+            showStatus(statusEl, '', '');
+        });
 
-            phraseBox.textContent = currentPhrase;
-            phraseBox.classList.add('has-text');
-            phraseBox.classList.remove('copied');
+        // Обработчик: случайная фраза
+        randomPhraseBtn.addEventListener('click', async () => {
+            const newPhrase = getRandomPhrase();
+            previousPhrase = newPhrase;
+            setPhrase(newPhrase, false);
 
             try {
-                await navigator.clipboard.writeText(currentPhrase);
+                await navigator.clipboard.writeText(newPhrase);
                 phraseBox.classList.add('copied');
                 showStatus(statusEl, 'Фраза скопирована в буфер! ✅', 'success');
             } catch (err) {
@@ -767,6 +817,30 @@
             }
         });
 
+        // Обработчик: кнопка копирования
+        copyPhraseBtn.addEventListener('click', async () => {
+            const text = phraseBox.textContent;
+            if (!text || text === 'Нажмите «🎲 Случайная фраза» или выберите из списка') {
+                showStatus(statusEl, 'Сначала выберите или сгенерируйте фразу', 'error');
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(text);
+                phraseBox.classList.add('copied');
+                showStatus(statusEl, 'Фраза скопирована в буфер! ✅', 'success');
+            } catch (err) {
+                const ok = copyText(text);
+                if (ok) {
+                    phraseBox.classList.add('copied');
+                    showStatus(statusEl, 'Фраза скопирована в буфер! ✅', 'success');
+                } else {
+                    showStatus(statusEl, 'Не удалось скопировать. ❌', 'error');
+                }
+            }
+        });
+
+        // Инициализация
         showStatus(statusEl, '');
         previousPhrase = '';
 
