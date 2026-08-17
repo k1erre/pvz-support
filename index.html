@@ -578,16 +578,18 @@
 
     <script>
         // ================================================================
-        //  СТРАХОВКА ОТ КЭШИРОВАНИЯ — АВТОМАТИЧЕСКИЙ ПАРАМЕТР В URL
+        //  СТРАХОВКА ОТ КЭШИРОВАНИЯ — ВСЕГДА СВЕЖИЙ ПАРАМЕТР В URL
+        //  (даже если пользователь добавил страницу в закладки)
         // ================================================================
 
         (function() {
-            if (!window.location.search) {
-                try {
-                    const url = new URL(window.location);
-                    url.searchParams.set('v', Date.now());
-                    window.history.replaceState({}, '', url);
-                } catch (e) {}
+            try {
+                const url = new URL(window.location);
+                // ВСЕГДА обновляем параметр на текущее время
+                url.searchParams.set('v', Date.now());
+                window.history.replaceState({}, '', url);
+            } catch (e) {
+                // Если что-то пошло не так — просто игнорируем
             }
         })();
 
