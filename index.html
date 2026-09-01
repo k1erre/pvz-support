@@ -516,20 +516,19 @@
         <div class="tab-content active" id="tab-main">
             <!-- Выпадающий список со всеми фразами -->
             <div class="field-group">
-                <label for="phraseSelect">Выбрать фразу из списка</label>
                 <select id="phraseSelect">
-                    <option value="">— Выберите фразу —</option>
+                    <option value="">— Выбери фразу —</option>
                 </select>
             </div>
 
             <!-- Блок с отображением выбранной/случайной фразы -->
             <div id="phraseBox" class="phrase-box">
-                Нажмите «🎲 Случайная фраза» или выберите из списка
+                Сгенерируй случайную фразу или выбери из списка
             </div>
 
             <!-- Две кнопки: Случайная фраза и Копировать -->
             <div class="btn-center">
-                <button id="randomPhraseBtn" class="btn btn-primary">🎲 Случайная фраза</button>
+                <button id="randomPhraseBtn" class="btn btn-primary">✨ Случайная фраза</button>
                 <button id="copyPhraseBtn" class="btn btn-success">📋 Скопировать</button>
             </div>
 
@@ -541,19 +540,17 @@
         <!-- ============================================================ -->
         <div class="tab-content" id="tab-temp">
             <div class="field-group">
-                <label for="tempCategory">Категория</label>
                 <select id="tempCategory">
-                    <option value="all">— Все —</option>
-                    <option value="zz">По заказам (ЗЗ)</option>
+                    <option value="all">— Категория —</option>
+                    <option value="zz">По заказам</option>
                     <option value="tech">Технические проблемы</option>
                     <option value="other">Вне тем</option>
                 </select>
             </div>
 
             <div class="field-group">
-                <label for="tempPhraseSelect">Выберите фразу</label>
                 <select id="tempPhraseSelect">
-                    <option value="">— Выберите —</option>
+                    <option value="">— Выбери ответ —</option>
                 </select>
             </div>
 
@@ -562,13 +559,13 @@
                 <label for="tempAddGreeting">Добавить «Здравствуйте!» в начало</label>
             </div>
 
-            <div class="btn-group">
-                <button class="btn btn-success btn-sm" id="tempCopyBtn">📋 Скопировать</button>
+            <div class="output-block">
+                <!--<label>Выбранный ответ</label>-->
+                <textarea class="output-area" id="tempOutput" readonly placeholder="Здесь появится выбранный ответ"></textarea>
             </div>
 
-            <div class="output-block">
-                <label>Выбранный ответ</label>
-                <textarea class="output-area" id="tempOutput" readonly placeholder="Здесь появится выбранный ответ…"></textarea>
+            <div class="btn-group" style="justify-content: center; margin-top: 6px;">
+                <button class="btn btn-success btn-sm" id="tempCopyBtn" style="min-width: 160px;">📋 Скопировать</button>
             </div>
 
             <div id="tempStatus" class="status"></div>
@@ -701,7 +698,7 @@
         }
 
         function getCategoryLabel(cat) {
-            const map = { 'zz': 'ЗЗ', 'tech': 'Технические', 'other': 'Вне тем' };
+            const map = { 'zz': 'Заказы', 'tech': 'Технические', 'other': 'Вне тем' };
             return map[cat] || cat;
         }
 
@@ -735,12 +732,13 @@
         const copyPhraseBtn = document.getElementById('copyPhraseBtn');
         const statusEl = document.getElementById('status');
 
+        const PLACEHOLDER_TEXT = 'Сгенерируй случайную фразу или выбери из списка';
         let currentPhrase = '';
         let previousPhrase = '';
 
         // Заполняем выпадающий список
         function populatePhraseSelect() {
-            phraseSelect.innerHTML = '<option value="">— Выберите фразу —</option>';
+            phraseSelect.innerHTML = '<option value="">— Выбери фразу —</option>';
             MAIN_PHRASES.forEach((phrase, index) => {
                 const option = document.createElement('option');
                 option.value = index;
@@ -761,6 +759,13 @@
             } else {
                 phraseBox.classList.remove('copied');
             }
+        }
+
+        // Функция сброса к состоянию-заглушке
+        function resetPhrase() {
+            currentPhrase = '';
+            phraseBox.textContent = PLACEHOLDER_TEXT;
+            phraseBox.classList.remove('has-text', 'copied');
         }
 
         // Функция получения случайной фразы (без повторов)
@@ -791,8 +796,7 @@
         phraseSelect.addEventListener('change', function() {
             const index = parseInt(this.value);
             if (isNaN(index) || index < 0 || index >= MAIN_PHRASES.length) {
-                setPhrase('Нажмите «🎲 Случайная фраза» или выберите из списка', false);
-                phraseBox.classList.remove('has-text');
+                resetPhrase();
                 showStatus(statusEl, '', '');
                 return;
             }
@@ -811,7 +815,7 @@
             try {
                 await navigator.clipboard.writeText(newPhrase);
                 phraseBox.classList.add('copied');
-                showStatus(statusEl, 'Фраза скопирована в буфер! ✅', 'success');
+                showStatus(statusEl, 'Скопировано ✅', 'success');
             } catch (err) {
                 console.warn('Ошибка копирования:', err);
                 showStatus(statusEl, 'Не удалось скопировать. Проверьте права доступа. ❌', 'error');
@@ -822,20 +826,22 @@
         // Обработчик: кнопка копирования
         copyPhraseBtn.addEventListener('click', async () => {
             const text = phraseBox.textContent;
-            if (!text || text === 'Нажмите «🎲 Случайная фраза» или выберите из списка') {
-                showStatus(statusEl, 'Сначала выберите или сгенерируйте фразу', 'error');
+            
+            // Проверяем, что в блоке не заглушка и есть реальный текст
+            if (!text || text === PLACEHOLDER_TEXT || !phraseBox.classList.contains('has-text')) {
+                showStatus(statusEl, 'Сначала выбери или сгенерируй фразу', 'error');
                 return;
             }
 
             try {
                 await navigator.clipboard.writeText(text);
                 phraseBox.classList.add('copied');
-                showStatus(statusEl, 'Фраза скопирована в буфер! ✅', 'success');
+                showStatus(statusEl, 'Скопировано ✅', 'success');
             } catch (err) {
                 const ok = copyText(text);
                 if (ok) {
                     phraseBox.classList.add('copied');
-                    showStatus(statusEl, 'Фраза скопирована в буфер! ✅', 'success');
+                    showStatus(statusEl, 'Скопировано ✅', 'success');
                 } else {
                     showStatus(statusEl, 'Не удалось скопировать. ❌', 'error');
                 }
@@ -863,7 +869,7 @@
             if (category !== 'all') {
                 filtered = TEMP_PHRASES.filter(p => p.category === category);
             }
-            tempPhraseSelect.innerHTML = '<option value="">— Выберите —</option>';
+            tempPhraseSelect.innerHTML = '<option value="">— Выбери ответ —</option>';
             filtered.forEach((p, index) => {
                 const option = document.createElement('option');
                 option.value = index;
@@ -915,16 +921,16 @@
         tempCopyBtn.addEventListener('click', async () => {
             const text = tempOutput.value;
             if (!text) {
-                showStatus(tempStatus, 'Сначала выберите фразу', 'error');
+                showStatus(tempStatus, 'Сначала выбери фразу', 'error');
                 return;
             }
 
             try {
                 await navigator.clipboard.writeText(text);
-                showStatus(tempStatus, 'Скопировано! ✅', 'success');
+                showStatus(tempStatus, 'Скопировано ✅', 'success');
             } catch (err) {
                 const ok = copyText(text);
-                showStatus(tempStatus, ok ? 'Скопировано! ✅' : 'Ошибка копирования ❌', ok ? 'success' : 'error');
+                showStatus(tempStatus, ok ? 'Скопировано ✅' : 'Ошибка копирования ❌', ok ? 'success' : 'error');
             }
         });
 
